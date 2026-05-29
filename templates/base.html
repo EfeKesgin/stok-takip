@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stok Takip ERP Sistemi</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="sidebar glass-panel">
+        <div class="brand">
+            <i class="fa-solid fa-box-open"></i> Stok Takip ERP
+        </div>
+        <nav>
+            <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
+                <i class="fa-solid fa-chart-pie"></i> Dashboard
+            </a>
+            <a href="{{ url_for('products') }}" class="nav-link {% if request.endpoint == 'products' %}active{% endif %}">
+                <i class="fa-solid fa-boxes-stacked"></i> Ürünler & Stok
+            </a>
+            <a href="{{ url_for('campaigns') }}" class="nav-link {% if request.endpoint == 'campaigns' %}active{% endif %}">
+                <i class="fa-solid fa-fire"></i> Kampanyalar
+            </a>
+            <a href="{{ url_for('scanner') }}" class="nav-link {% if request.endpoint == 'scanner' %}active{% endif %}">
+                <i class="fa-solid fa-camera"></i> Barkod Tarayıcı
+            </a>
+            <a href="{{ url_for('logs') }}" class="nav-link {% if request.endpoint == 'logs' %}active{% endif %}">
+                <i class="fa-solid fa-clipboard-list"></i> İşlem Geçmişi
+            </a>
+        </nav>
+    </div>
+
+    <main class="main-content">
+        <div class="flash-messages">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} glass-panel">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        </div>
+        
+        {% block content %}{% endblock %}
+    </main>
+    
+    <script>
+        setTimeout(() => {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(alert => {
+                alert.style.opacity = '0';
+                setTimeout(() => alert.remove(), 300);
+            });
+        }, 3000);
+    </script>
+</body>
+</html>

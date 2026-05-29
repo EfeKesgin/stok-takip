@@ -1,0 +1,219 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="header" style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 1rem;">
+    <div>
+        <h1 style="margin: 0; font-size: 2.2rem; display: flex; align-items: center; gap: 1rem;">
+            <div style="background: rgba(88, 166, 255, 0.15); color: #58a6ff; padding: 0.6rem 0.8rem; border-radius: 10px;">
+                <i class="fa-solid fa-chart-pie"></i>
+            </div>
+            Sistem Özeti
+        </h1>
+        <p style="color: var(--text-muted); margin-top: 0.6rem; margin-bottom: 0;">Gerçek zamanlı depo ve finansal analiz paneli</p>
+    </div>
+</div>
+
+<div class="stat-grid">
+    <div class="stat-card glass-panel">
+        <span class="stat-title">Kayıtlı Çeşit</span>
+        <span class="stat-value">{{ total_products }}</span>
+    </div>
+    <div class="stat-card glass-panel">
+        <span class="stat-title">Toplam Stok (Adet)</span>
+        <span class="stat-value">{{ total_items }}</span>
+    </div>
+    <div class="stat-card glass-panel">
+        <span class="stat-title">Stok Değeri (TL)</span>
+        <span class="stat-value">₺{{ "{:,.2f}".format(total_value) }}</span>
+    </div>
+</div>
+
+<div class="stat-grid" style="grid-template-columns: 2fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
+            <div class="glass-panel" style="padding: 1.5rem; margin-bottom: 2rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <h3 style="margin: 0;">Son Hareketler</h3>
+                    <div style="display: flex; gap: 0.5rem; background: rgba(0,0,0,0.2); padding: 0.3rem; border-radius: 8px;">
+                        <a href="?range=24h" class="btn" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; background: {% if current_range == '24h' %}var(--primary){% else %}transparent{% endif %}; color: {% if current_range == '24h' %}white{% else %}var(--text-muted){% endif %};">Son 24 Saat</a>
+                        <a href="?range=1week" class="btn" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; background: {% if current_range == '1week' %}var(--primary){% else %}transparent{% endif %}; color: {% if current_range == '1week' %}white{% else %}var(--text-muted){% endif %};">1 Hafta</a>
+                        <a href="?range=1month" class="btn" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; background: {% if current_range == '1month' %}var(--primary){% else %}transparent{% endif %}; color: {% if current_range == '1month' %}white{% else %}var(--text-muted){% endif %};">1 Ay</a>
+                        <a href="?range=3months" class="btn" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; background: {% if current_range == '3months' %}var(--primary){% else %}transparent{% endif %}; color: {% if current_range == '3months' %}white{% else %}var(--text-muted){% endif %};">3 Ay</a>
+                        <a href="?range=1year" class="btn" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; background: {% if current_range == '1year' %}var(--primary){% else %}transparent{% endif %}; color: {% if current_range == '1year' %}white{% else %}var(--text-muted){% endif %};">1 Yıl</a>
+                    </div>
+                </div>
+                
+                <div class="glass-panel" style="padding: 1rem 1.5rem; margin-bottom: 1.5rem; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05);">
+                    <div class="stat-grid" style="grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 0;">
+                        <div style="display: flex; flex-direction: column; gap: 0.3rem;">
+                            <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase;">Stok Alım Maliyeti</span>
+                            <span style="font-size: 1.3rem; font-weight: bold; color: var(--danger);">₺{{ "{:,.2f}".format(total_stock_cost) }}</span>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 0.3rem;">
+                            <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase;">Brüt Ciro (Satışlar)</span>
+                            <span style="font-size: 1.3rem; font-weight: bold; color: white;">₺{{ "{:,.2f}".format(total_revenue) }}</span>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 0.3rem;">
+                            <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase;">İndirim Kaybı (Fırsat)</span>
+                            <span style="font-size: 1.3rem; font-weight: bold; color: #d29922;">-₺{{ "{:,.2f}".format(total_discount_loss) }}</span>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 0.3rem;">
+                            <span style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase;">Net Satış Kârı</span>
+                            <span style="font-size: 1.3rem; font-weight: bold; color: {% if total_profit >= 0 %}var(--success){% else %}var(--danger){% endif %};">
+                                {% if total_profit >= 0 %}+{% endif %}₺{{ "{:,.2f}".format(total_profit) }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <canvas id="trendChart" height="80"></canvas>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
+                <div class="glass-panel" style="padding: 1.5rem; display: flex; flex-direction: column;">
+                    <h3 style="margin-top: 0; margin-bottom: 1rem; color: #ff5e5e; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.8rem;"><i class="fa-solid fa-triangle-exclamation"></i> Kritik Stok Uyarıları</h3>
+                    <div style="flex: 1; min-height: 220px; overflow-y: auto;">
+                        {% if low_stock_products %}
+                            <ul style="list-style: none; padding: 0; margin: 0;">
+                            {% for p in low_stock_products %}
+                                <li style="display: flex; align-items: center; justify-content: space-between; padding: 0.8rem 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                    <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 1rem; font-size: 0.95rem;">{{ p.name }}</span>
+                                    <span class="badge badge-{% if p.quantity == 0 %}danger{% else %}warning{% endif %}" style="white-space: nowrap;">{{ p.quantity }} Adet</span>
+                                </li>
+                            {% endfor %}
+                            </ul>
+                        {% else %}
+                            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; min-height: 180px; color: var(--text-muted); opacity: 0.8;">
+                                <i class="fa-solid fa-shield-halved" style="font-size: 3rem; margin-bottom: 1rem; color: #2ea043;"></i>
+                                <span style="font-size: 1.1rem;">Tüm stoklar güvende</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="glass-panel" style="padding: 1.5rem; display: flex; flex-direction: column;">
+                    <h3 style="margin-top: 0; margin-bottom: 1rem; color: #d29922; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.8rem;"><i class="fa-solid fa-trophy"></i> En Çok Satan 5 Ürün (Seçili Dönem)</h3>
+                    <div style="flex: 1; min-height: 220px;">
+                        {% if best_sellers %}
+                            <ul style="list-style: none; padding: 0; margin: 0;">
+                            {% for p_name, sold_qty in best_sellers %}
+                                <li style="display: flex; align-items: center; justify-content: space-between; padding: 0.8rem 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                    <span style="font-weight: 500; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 1rem;">{{ p_name }}</span>
+                                    <span style="background: rgba(46, 160, 67, 0.15); color: var(--success); font-weight: bold; padding: 0.4rem 0.8rem; border-radius: 6px; white-space: nowrap; font-size: 0.85rem;">{{ "{:,.0f}".format(sold_qty) }} Adet</span>
+                                </li>
+                            {% endfor %}
+                            </ul>
+                        {% else %}
+                            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; min-height: 180px; color: var(--text-muted); opacity: 0.8;">
+                                <i class="fa-solid fa-box-open" style="font-size: 3rem; margin-bottom: 1rem;"></i>
+                                <span style="font-size: 1.1rem;">Hareket Yok</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
+                <div class="glass-panel" style="padding: 1.5rem; max-height: 400px; overflow-y: auto;">
+                    <h3 style="margin-top: 0; margin-bottom: 1rem;"><i class="fa-solid fa-clock-rotate-left"></i> Son Hareketler</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Ürün</th>
+                                <th>İşlem</th>
+                                <th>Adet</th>
+                                <th>Tarih</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for t in recent_transactions %}
+                            <tr>
+                                <td>{{ t.product.name }}</td>
+                                <td>
+                                    <span class="badge badge-{{ t.type|lower }}">
+                                        {{ "GİRİŞ" if t.type == 'IN' else "ÇIKIŞ" }}
+                                    </span>
+                                </td>
+                                <td>{{ t.quantity }}</td>
+                                <td>{{ t.date.strftime('%Y-%m-%d %H:%M') }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4" style="text-align: center; color: var(--text-muted);">Henüz hareket yok.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="glass-panel" style="padding: 1.5rem; max-height: 400px; display: flex; flex-direction: column;">
+                    <h3 style="margin-top: 0; margin-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.8rem;"><i class="fa-solid fa-chart-pie"></i> Kategorilere Göre Dağılım</h3>
+                    <div style="flex: 1; position: relative; min-height: 250px;">
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                </div>
+            </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    Chart.defaults.color = '#8b949e';
+    Chart.defaults.font.family = 'Inter';
+
+    new Chart(document.getElementById('trendChart'), {
+        type: 'line',
+        data: {
+            labels: {{ chart_dates|tojson }},
+            datasets: [
+                {
+                    label: 'Stok Girişi',
+                    data: {{ chart_in|tojson }},
+                    borderColor: '#2ea043',
+                    backgroundColor: 'rgba(46, 160, 67, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                },
+                {
+                    label: 'Stok Çıkışı',
+                    data: {{ chart_out|tojson }},
+                    borderColor: '#da3633',
+                    backgroundColor: 'rgba(218, 54, 51, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: 'top' }
+            },
+            scales: {
+                y: { beginAtZero: true, grid: { color: 'rgba(48, 54, 61, 0.5)' } },
+                x: { grid: { color: 'rgba(48, 54, 61, 0.5)' } }
+            }
+        }
+    });
+
+    new Chart(document.getElementById('categoryChart'), {
+        type: 'doughnut',
+        data: {
+            labels: {{ categories|tojson }},
+            datasets: [{
+                data: {{ category_counts|tojson }},
+                backgroundColor: ['#58a6ff', '#2ea043', '#d29922', '#da3633', '#8957e5'],
+                borderWidth: 0,
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '70%',
+            plugins: {
+                legend: { position: 'bottom' }
+            }
+        }
+    });
+</script>
+{% endblock %}

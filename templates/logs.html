@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="header" style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 1rem;">
+    <div>
+        <h1 style="margin: 0; font-size: 2.2rem; display: flex; align-items: center; gap: 1rem;">
+            <div style="background: rgba(14, 165, 233, 0.15); color: #0ea5e9; padding: 0.6rem 0.8rem; border-radius: 10px;">
+                <i class="fa-solid fa-clipboard-list"></i>
+            </div>
+            İşlem Geçmişi
+        </h1>
+        <p style="color: var(--text-muted); margin-top: 0.6rem; margin-bottom: 0;">Sistem üzerindeki tüm stok hareketlerinin kronolojik kasiyer defteri</p>
+    </div>
+    <div>
+        <a href="{{ url_for('export_logs') }}" class="btn" style="background: #2ea043; display: flex; align-items: center; gap: 0.5rem;">
+            <i class="fa-solid fa-file-excel"></i> Tüm Kayıtları Excel'e Aktar
+        </a>
+    </div>
+</div>
+
+<div class="glass-panel" style="padding: 1.5rem;">
+    {% if transactions %}
+    <div style="overflow-x: auto;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Tarih / Saat</th>
+                    <th>İşlem Tipi</th>
+                    <th>Ürün Adı</th>
+                    <th>Adet</th>
+                    <th>İşlem Anı Fiyatı</th>
+                    <th>Kâr / Zarar (Net)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in transactions %}
+                <tr>
+                    <td style="color: var(--text-muted); font-size: 0.9rem;">
+                        {{ t.date.strftime('%d.%m.%Y %H:%M') }}
+                    </td>
+                    <td>
+                        {% if t.type == 'IN' %}
+                            <span class="badge badge-success" style="font-size: 0.8rem;"><i class="fa-solid fa-arrow-down"></i> STOK GİRİŞİ</span>
+                        {% else %}
+                            <span class="badge badge-danger" style="font-size: 0.8rem;"><i class="fa-solid fa-arrow-up"></i> STOK ÇIKIŞI (SATIŞ)</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <strong>{{ t.product.name }}</strong>
+                        <div style="font-size: 0.75rem; color: #8b949e; margin-top: 0.2rem;">SKU: {{ t.product.sku }}</div>
+                    </td>
+                    <td style="font-weight: bold; font-size: 1.1rem; color: {% if t.type == 'IN' %}var(--success){% else %}var(--danger){% endif %};">
+                        {% if t.type == 'IN' %}+{% else %}-{% endif %}{{ t.quantity }}
+                    </td>
+                    <td>
+                        {% if t.type == 'OUT' and t.unit_price is not none %}
+                            ₺{{ "{:,.2f}".format(t.unit_price) }}
+                        {% else %}
+                            <span style="color: var(--text-muted);">-</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if t.type == 'OUT' and t.unit_price is not none and t.unit_purchase_price is not none %}
+                            {% set total_revenue = t.unit_price * t.quantity %}
+                            {% set total_cost = t.unit_purchase_price * t.quantity %}
+                            {% set net_profit = total_revenue - total_cost %}
+                            
+                            {% if net_profit > 0 %}
+                                <span style="color: var(--success); font-weight: 500;">+₺{{ "{:,.2f}".format(net_profit) }}</span>
+                            {% elif net_profit < 0 %}
+                                <span style="color: var(--danger); font-weight: 500;">-₺{{ "{:,.2f}".format(net_profit|abs) }}</span>
+                            {% else %}
+                                <span style="color: var(--text-muted);">₺0.00</span>
+                            {% endif %}
+                            
+                            {% if t.unit_discount_loss and t.unit_discount_loss > 0 %}
+                                <div style="font-size: 0.75rem; color: #d29922; margin-top: 0.2rem;">
+                                    (İndirim Kaybı: ₺{{ "{:,.2f}".format(t.unit_discount_loss * t.quantity) }})
+                                </div>
+                            {% endif %}
+                        {% else %}
+                            <span style="color: var(--text-muted);">-</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 4rem 0; color: var(--text-muted);">
+        <i class="fa-solid fa-folder-open" style="font-size: 4rem; opacity: 0.5; margin-bottom: 1rem;"></i>
+        <h3 style="margin: 0; font-weight: 500;">Henüz işlem geçmişi yok</h3>
+        <p>Stok giriş/çıkışı yapıldığında tüm kayıtlar bu sayfada listelenecektir.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

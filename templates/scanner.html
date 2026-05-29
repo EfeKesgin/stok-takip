@@ -1,0 +1,216 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="header" style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 1rem;">
+    <div>
+        <h1 style="margin: 0; font-size: 2.2rem; display: flex; align-items: center; gap: 1rem;">
+            <div style="background: rgba(137, 87, 229, 0.15); color: #8957e5; padding: 0.6rem 0.8rem; border-radius: 10px;">
+                <i class="fa-solid fa-camera"></i>
+            </div>
+            Canlı Barkod Tarayıcı
+        </h1>
+        <p style="color: var(--text-muted); margin-top: 0.6rem; margin-bottom: 0;">Cihaz kamerası veya dış dosya ile saniyeler içinde stok yönetimi</p>
+    </div>
+</div>
+
+<div class="stat-grid" style="grid-template-columns: 1fr 1fr; gap: 2rem; align-items: start;">
+    <!-- Camera View -->
+    <div class="glass-panel" style="padding: 1.5rem; text-align: center;">
+        <h3 style="margin-top: 0; color: white; margin-bottom: 1.5rem;">Kamera Görüntüsü</h3>
+        <div id="reader" style="width: 100%; border-radius: 8px; overflow: hidden; margin-bottom: 1rem; background: rgba(0,0,0,0.3); min-height: 250px;"></div>
+        
+        <div id="cameraControls" style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+            <button id="btnStartCamera" class="btn" style="flex: 1; background: #58a6ff;"><i class="fa-solid fa-video"></i> Kamerayı Aç</button>
+            <label class="btn" style="flex: 1; background: rgba(255,255,255,0.1); cursor: pointer; margin: 0; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                <i class="fa-solid fa-folder-open"></i> Dosyadan Oku
+                <input type="file" id="fileInput" accept="image/*" style="display: none;">
+            </label>
+        </div>
+        <button id="btnStopCamera" class="btn btn-danger" style="width: 100%; margin-top: 1rem; display: none;"><i class="fa-solid fa-stop"></i> Kamerayı Kapat</button>
+        
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 1rem;"><i class="fa-solid fa-info-circle"></i> Canlı tarama yapmak için kamerayı açın veya barkod içeren bir fotoğraf dosyası seçin.</p>
+    </div>
+
+    <!-- Results View -->
+    <div class="glass-panel" id="resultPanel" style="padding: 2rem; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 400px; position: relative;">
+        
+        <!-- Idle State -->
+        <div id="idleState" style="text-align: center; color: var(--text-muted); width: 100%;">
+            <i class="fa-solid fa-barcode" style="font-size: 5rem; opacity: 0.3; margin-bottom: 1.5rem; display: block;"></i>
+            <h2 style="margin: 0; font-weight: normal;">Tarama Bekleniyor...</h2>
+        </div>
+
+        <!-- Active State (Product Found) -->
+        <div id="activeState" style="display: none; width: 100%; text-align: center;">
+            <span class="badge badge-success" style="font-size: 0.9rem; margin-bottom: 1.5rem; display: inline-block; padding: 0.4rem 1rem;"><i class="fa-solid fa-check-circle"></i> Ürün Eşleşti</span>
+            
+            <h2 id="pName" style="margin: 0 0 0.5rem 0; color: white; font-size: 1.8rem;">-</h2>
+            <div style="font-size: 1.5rem; color: #d29922; margin-bottom: 2rem; font-weight: bold;">₺<span id="pPrice">-</span></div>
+            
+            <div style="background: rgba(0,0,0,0.3); padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem; border: 1px solid rgba(255,255,255,0.05);">
+                <div style="font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem;">Mevcut Depo Stoğu</div>
+                <div style="font-size: 3rem; font-weight: bold; color: white;" id="pQuantity">-</div>
+            </div>
+
+            <form action="{{ url_for('add_transaction') }}" method="POST" id="scanForm">
+                <input type="hidden" name="product_id" id="formProductId">
+                
+                <div style="text-align: left; margin-bottom: 1.5rem; background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 8px;">
+                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">İşlem Yapılacak Adet:</label>
+                    <input type="number" name="quantity" id="formQuantity" class="form-control" value="1" min="1" oninput="updateButtons()" style="font-size: 1.5rem; font-weight: bold; text-align: center;">
+                </div>
+
+                <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
+                    <button type="submit" name="type" value="IN" class="btn btn-success" style="flex: 1; padding: 1rem; font-size: 1.1rem; border-radius: 8px;"><i class="fa-solid fa-arrow-down"></i> <span id="btnInLabel">+1 GİRDİ</span></button>
+                    <button type="submit" name="type" value="OUT" class="btn btn-danger" style="flex: 1; padding: 1rem; font-size: 1.1rem; border-radius: 8px;"><i class="fa-solid fa-arrow-up"></i> <span id="btnOutLabel">-1 ÇIKTI</span></button>
+                </div>
+            </form>
+            
+            <button onclick="resetScanner()" class="btn" style="background: transparent; border: 1px solid rgba(255,255,255,0.2); width: 100%; color: var(--text-muted);"><i class="fa-solid fa-rotate-right"></i> İptal & Yeni Ürün Tara</button>
+        </div>
+
+        <!-- Error State -->
+        <div id="errorState" style="display: none; text-align: center; width: 100%;">
+            <i class="fa-solid fa-triangle-exclamation" style="font-size: 4rem; margin-bottom: 1.5rem; color: var(--danger);"></i>
+            <h2 style="margin-top: 0; color: var(--danger);">Ürün Bulunamadı!</h2>
+            <p id="errorMsg" style="color: var(--text-muted); margin-bottom: 1.5rem;">Bu barkod (SKU) sistemde kayıtlı değil.</p>
+            
+            <a href="#" id="linkAddNew" class="btn" style="background: #2ea043; width: 100%; margin-bottom: 1rem; text-decoration: none; display: block; box-sizing: border-box; text-align: center;"><i class="fa-solid fa-plus"></i> Barkodu Yeni Ürün Olarak Ekle</a>
+            
+            <button onclick="resetScanner()" class="btn" style="background: rgba(255,255,255,0.1); width: 100%; padding: 1rem;"><i class="fa-solid fa-rotate-right"></i> İptal & Tekrar Dene</button>
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+<script>
+    const html5QrCode = new Html5Qrcode("reader", { experimentalFeatures: { useBarCodeDetectorIfSupported: true } });
+    let isProcessing = false;
+
+    document.getElementById('btnStartCamera').addEventListener('click', () => {
+        Html5Qrcode.getCameras().then(devices => {
+            if (devices && devices.length > 0) {
+                // Find a back camera if available, otherwise just use the first camera
+                let cameraId = devices[0].id;
+                for (let i = 0; i < devices.length; i++) {
+                    if (devices[i].label.toLowerCase().includes('back') || devices[i].label.toLowerCase().includes('arka')) {
+                        cameraId = devices[i].id;
+                        break;
+                    }
+                }
+                
+                html5QrCode.start(
+                    cameraId,
+                    { fps: 10, qrbox: { width: 250, height: 100 } },
+                    onScanSuccess,
+                    onScanFailure
+                ).then(() => {
+                    document.getElementById('cameraControls').style.display = 'none';
+                    document.getElementById('btnStopCamera').style.display = 'block';
+                }).catch(err => {
+                    document.getElementById('errorMsg').innerText = "Kameraya bağlanılamadı: " + err;
+                    document.getElementById('linkAddNew').style.display = 'none';
+                    document.getElementById('errorState').style.display = 'block';
+                });
+            } else {
+                document.getElementById('errorMsg').innerText = "Sistemde hiçbir kamera bulunamadı!";
+                document.getElementById('linkAddNew').style.display = 'none';
+                document.getElementById('errorState').style.display = 'block';
+            }
+        }).catch(err => {
+            document.getElementById('errorMsg').innerText = "Kameraya erişim izni reddedildi! Lütfen tarayıcı ayarlarından (URL çubuğundaki kilit ikonu) kamera izni verin.";
+            document.getElementById('linkAddNew').style.display = 'none';
+            document.getElementById('errorState').style.display = 'block';
+        });
+    });
+
+    document.getElementById('btnStopCamera').addEventListener('click', () => {
+        html5QrCode.stop().then(() => {
+            document.getElementById('cameraControls').style.display = 'flex';
+            document.getElementById('btnStopCamera').style.display = 'none';
+        });
+    });
+
+    document.getElementById('fileInput').addEventListener('change', (e) => {
+        if (e.target.files.length == 0) return;
+        const imageFile = e.target.files[0];
+        
+        document.getElementById('idleState').style.display = 'none';
+        document.getElementById('activeState').style.display = 'none';
+        document.getElementById('errorState').style.display = 'none';
+        
+        html5QrCode.scanFile(imageFile, true)
+            .then(decodedText => {
+                onScanSuccess(decodedText);
+            })
+            .catch(err => {
+                document.getElementById('errorMsg').innerText = "Görselde barkod bulunamadı! Fotoğrafın net olduğundan emin olun.";
+                document.getElementById('linkAddNew').style.display = 'none';
+                document.getElementById('errorState').style.display = 'block';
+                e.target.value = ""; // reset file input
+            });
+    });
+
+    function onScanSuccess(decodedText, decodedResult) {
+        if (isProcessing) return;
+        isProcessing = true;
+        
+        document.getElementById('idleState').style.display = 'none';
+        document.getElementById('activeState').style.display = 'none';
+        document.getElementById('errorState').style.display = 'none';
+        
+        fetch('/api/product/' + encodeURIComponent(decodedText))
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('pName').innerText = data.name;
+                    document.getElementById('pPrice').innerText = data.price.toFixed(2);
+                    document.getElementById('pQuantity').innerText = data.quantity;
+                    document.getElementById('formProductId').value = data.id;
+                    updateButtons();
+                    
+                    document.getElementById('activeState').style.display = 'block';
+                    
+                    try {
+                        let audio = new Audio('https://www.soundjay.com/buttons/beep-07.wav');
+                        audio.play();
+                    } catch(e) {}
+                } else {
+                    document.getElementById('errorMsg').innerText = "Tanımlanamayan Kod: " + decodedText;
+                    document.getElementById('linkAddNew').href = '/products?add_sku=' + encodeURIComponent(decodedText);
+                    document.getElementById('linkAddNew').style.display = 'block';
+                    document.getElementById('errorState').style.display = 'block';
+                }
+            })
+            .catch(err => {
+                document.getElementById('errorMsg').innerText = "Sunucu bağlantı hatası!";
+                document.getElementById('linkAddNew').style.display = 'none';
+                document.getElementById('errorState').style.display = 'block';
+            });
+    }
+
+    function onScanFailure(error) {
+        // ignore background continuous failures
+    }
+
+    function resetScanner() {
+        document.getElementById('idleState').style.display = 'block';
+        document.getElementById('activeState').style.display = 'none';
+        document.getElementById('errorState').style.display = 'none';
+        document.getElementById('formQuantity').value = 1;
+        updateButtons();
+        isProcessing = false;
+    }
+
+    function updateButtons() {
+        let qty = document.getElementById('formQuantity').value || 1;
+        document.getElementById('btnInLabel').innerText = '+' + qty + ' GİRDİ';
+        document.getElementById('btnOutLabel').innerText = '-' + qty + ' ÇIKTI';
+    }
+</script>
+<style>
+    /* Clean up the HTML5 QRCode default UI */
+    #reader { border: none !important; }
+    #reader video { border-radius: 8px; width: 100% !important; }
+</style>
+{% endblock %}
